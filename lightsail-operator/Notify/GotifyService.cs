@@ -1,20 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 
-namespace lightsail_watchdog;
-
-public interface INotifyService
-{
-    Task Send(string message, string title, int priority = 5, bool log = true, CancellationToken cancellationToken = default);
-}
-
-public class EmptyNotifyService : INotifyService
-{
-    public Task Send(string message, string title, int priority = 5, bool log = true, CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
-}
+namespace lightsail_watchdog.Notify;
 
 public class GotifyService(string serverUrl, string token) : INotifyService
 {

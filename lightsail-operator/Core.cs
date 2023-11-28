@@ -1,15 +1,17 @@
-﻿using Amazon;
+﻿namespace lightsail_watchdog;
+
+using Amazon;
 using Amazon.Lightsail;
 using Amazon.Runtime;
-
-namespace lightsail_watchdog;
+using DnsUpdater;
+using Notify;
 
 public class Core
 {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
     private readonly AWSCredentials _credentials;
     private readonly INotifyService _ns;
-    private readonly CloudFlareDnsUpdater _cloudFlareDnsUpdater;
+    private readonly IDnsUpdater _dnsUpdater;
     private readonly AmazonLightsailClient _defaultClient;
 
     private async Task Check()
@@ -63,7 +65,7 @@ public class Core
                             throw new LightsailServerIpGetException($"{instance.DisplayName} get new ip failed");
                         }
 
-                        await _cloudFlareDnsUpdater.UpdateDns(instance.ServerName, newIp);
+                        await _dnsUpdater.UpdateDns(instance.ServerName, newIp);
 
                         await _ns.Send($"Update DNS {instance.ServerName} from {oldIp} to new ip {newIp}", "Lightsail Server Update");
                     }
@@ -88,11 +90,11 @@ public class Core
         await Task.WhenAll(tasks);
     }
 
-    public Core(AWSCredentials credentials, INotifyService ns, CloudFlareDnsUpdater cloudFlareDnsUpdater, TimeSpan period)
+    public Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater, TimeSpan period)
     {
         _credentials = credentials;
         _ns = ns;
-        _cloudFlareDnsUpdater = cloudFlareDnsUpdater;
+        _dnsUpdater = dnsUpdater;
         _defaultClient = LightsailOperator.CreateClientWithRegion(credentials, RegionEndpoint.USWest2.SystemName);
         _ = new Timer(_ => Task.Run(Check), null, TimeSpan.Zero, period);
     }

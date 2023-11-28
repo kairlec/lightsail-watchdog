@@ -1,9 +1,9 @@
-﻿using CloudFlare.Client;
+﻿namespace lightsail_watchdog.DnsUpdater;
+
+using CloudFlare.Client;
 using CloudFlare.Client.Api.Result;
 using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Enumerators;
-
-namespace lightsail_watchdog;
 
 internal static class CloudFlareResultExtensions
 {
@@ -18,7 +18,7 @@ internal static class CloudFlareResultExtensions
     }
 }
 
-public class CloudFlareDnsUpdater(string emailAddress, string globalApiKey, string zoneId)
+public class CloudFlareDnsUpdater(string emailAddress, string globalApiKey, string zoneId) : IDnsUpdater
 {
     private readonly CloudFlareClient _client = new(emailAddress, globalApiKey);
 

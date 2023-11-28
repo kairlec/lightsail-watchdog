@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  lightsail-watchdog:
+    image: kairlec/lightsail-watchdog
+    container_name: lightsail-watchdog
+    deploy:
+      restart_policy:
+        condition: always
+        delay: 5s
+        window: 60s
+    environment:
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
+      - GOTIFY_URL=
+      - GOTIFY_TOKEN=
+      - CLOUDFLARE_EMAIL=
+      - CLOUDFLARE_TOKEN=
+      - CLOUDFLARE_ZONE_ID=
+      - CHECK_PERIOD_MINUTES=60

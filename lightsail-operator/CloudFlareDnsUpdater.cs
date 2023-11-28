@@ -3,7 +3,7 @@ using CloudFlare.Client.Api.Result;
 using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Enumerators;
 
-namespace lightsail_operator;
+namespace lightsail_watchdog;
 
 internal static class CloudFlareResultExtensions
 {

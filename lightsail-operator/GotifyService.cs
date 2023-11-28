@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 
-namespace lightsail_operator;
+namespace lightsail_watchdog;
 
 public interface INotifyService
 {

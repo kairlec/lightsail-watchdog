@@ -2,7 +2,7 @@
 using Amazon.Lightsail;
 using Amazon.Runtime;
 
-namespace lightsail_operator;
+namespace lightsail_watchdog;
 
 public class Core
 {

@@ -1,5 +1,5 @@
 ﻿using Amazon.Runtime;
-using lightsail_operator;
+using lightsail_watchdog;
 
 LoggerInitializer.Initialize();
 

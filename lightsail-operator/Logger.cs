@@ -1,6 +1,6 @@
 ﻿using NLog;
 
-namespace lightsail_operator;
+namespace lightsail_watchdog;
 
 public static class LoggerInitializer
 {

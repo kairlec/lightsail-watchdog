@@ -1,4 +1,4 @@
-﻿namespace lightsail_operator;
+﻿namespace lightsail_watchdog;
 
 public abstract class LightsailWatchDogException(string message) : Exception(message);
 

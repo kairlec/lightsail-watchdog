@@ -2,7 +2,7 @@
 using Amazon;
 using Amazon.Lightsail.Model;
 
-namespace lightsail_operator;
+namespace lightsail_watchdog;
 
 using System;
 using Amazon.Lightsail;

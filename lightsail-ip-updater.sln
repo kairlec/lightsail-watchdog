@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lightsail-operator", "lightsail-operator\lightsail-operator.csproj", "{9C0FBDFD-57E2-42CC-A6E5-B2E5E5780AD3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9C0FBDFD-57E2-42CC-A6E5-B2E5E5780AD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C0FBDFD-57E2-42CC-A6E5-B2E5E5780AD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C0FBDFD-57E2-42CC-A6E5-B2E5E5780AD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C0FBDFD-57E2-42CC-A6E5-B2E5E5780AD3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

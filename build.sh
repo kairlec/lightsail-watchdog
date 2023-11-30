@@ -1,4 +1,11 @@
 #!/bin/sh
 set -e
 
-docker buildx build --load --no-cache -f Dockerfile -t kairlec/lightsail-watchdog .
+USE_MIRRORS=ustc
+
+# set mirrors from args
+if [ $# -gt 0 ]; then
+    USE_MIRRORS=$1
+fi
+
+docker buildx build --load --no-cache -f Dockerfile --build-args mirrors=$USE_MIRRORS -t kairlec/lightsail-watchdog . 

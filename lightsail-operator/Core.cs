@@ -27,7 +27,7 @@ public class Core
                 var oldIp = instance.Instance.PublicIpAddress;
                 try
                 {
-                    Logger.Debug("Checking {0}", instance.DisplayName);
+                    Logger.Info("Checking {0}", instance.DisplayName);
                     var result = await LightsailServerConnector.TestConnect(instance);
                     if (!result)
                     {
@@ -71,7 +71,7 @@ public class Core
                     }
                     else
                     {
-                        Logger.Debug("Checking {0} Success", instance.DisplayName);
+                        Logger.Info("Checking {0} Success", instance.DisplayName);
                     }
                 }
                 catch (LightsailWatchDogException e)

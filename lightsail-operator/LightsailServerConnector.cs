@@ -18,6 +18,9 @@ public static class LightsailServerConnector
                 try
                 {
                     await HttpClient.SendAsync(request, cancellationTokenSource.Token);
+
+                    Logger.Info($"{instance.Instance.Name}({instance.Instance.Arn}) test url:[{url} ({instance.Instance.PublicIpAddress}:{port})] success");
+
                     return true;
                 }
                 catch (Exception e)
@@ -27,7 +30,7 @@ public static class LightsailServerConnector
                         return false;
                     }
 
-                    Logger.Debug($"{instance.Instance.Name}({instance.Instance.Arn}) test url:[{url} ({instance.Instance.PublicIpAddress}:{port})] failed {e.Message}, retrying({retryCount})");
+                    Logger.Info($"{instance.Instance.Name}({instance.Instance.Arn}) test url:[{url} ({instance.Instance.PublicIpAddress}:{port})] failed {e.Message}, retrying({retryCount})");
                 }
             }
 

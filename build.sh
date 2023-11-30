@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-USE_MIRRORS=ustc
+USE_MIRRORS=offical
 
 # set mirrors from args
 if [ $# -gt 0 ]; then

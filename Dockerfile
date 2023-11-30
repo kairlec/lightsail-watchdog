@@ -10,11 +10,19 @@ RUN dotnet restore
 RUN dotnet publish -c Release -o /publish -p:PublishSingleFile=true --self-contained true
 
 ##################################
-FROM debian:bookworm-slim as runtime-offical
+FROM mcr.microsoft.com/dotnet/runtime:8.0 as runtime-offical
+
+##################################
+FROM debian:bookworm-slim as runtime-debian
 
 RUN apt update && apt install -y \
+    libc6 \
+    libgcc-s1 \
+    libgssapi-krb5-2 \
     libicu72 \
-    libssl3
+    libssl3 \
+    libstdc++6 \
+    zlib1g
 
 ##################################
 FROM debian:bookworm-slim as runtime-ustc
@@ -22,8 +30,13 @@ FROM debian:bookworm-slim as runtime-ustc
 RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt update && apt install -y \
+    libc6 \
+    libgcc-s1 \
+    libgssapi-krb5-2 \
     libicu72 \
-    libssl3
+    libssl3 \
+    libstdc++6 \
+    zlib1g
 
 ##################################
 FROM debian:bookworm-slim as runtime-aliyun
@@ -31,8 +44,13 @@ FROM debian:bookworm-slim as runtime-aliyun
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt update && apt install -y \
+    libc6 \
+    libgcc-s1 \
+    libgssapi-krb5-2 \
     libicu72 \
-    libssl3
+    libssl3 \
+    libstdc++6 \
+    zlib1g
 
 ##################################
 FROM debian:bookworm-slim as runtime-tuna
@@ -40,8 +58,13 @@ FROM debian:bookworm-slim as runtime-tuna
 RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt update && apt install -y \
+    libc6 \
+    libgcc-s1 \
+    libgssapi-krb5-2 \
     libicu72 \
-    libssl3
+    libssl3 \
+    libstdc++6 \
+    zlib1g
 
 ##################################
 FROM runtime-${mirrors}

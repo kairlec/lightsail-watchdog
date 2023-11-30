@@ -16,78 +16,88 @@ public class Core
 
     private async Task Check()
     {
-        Logger.Info("Check Start");
-        var regions = await LightsailOperator.GetRegions(_defaultClient);
-        var tasks = regions.Select(async region =>
+        try
         {
-            var client = LightsailOperator.CreateClientWithRegion(_credentials, region.Name);
-            var instances = await LightsailOperator.GetInstance(client);
-            var tasks = instances.Select(async instance =>
+            Logger.Info("Check Start");
+            var regions = await LightsailOperator.GetRegions(_defaultClient);
+            Logger.Info("Regions: {0}", string.Join(",", regions.Select(r => r.Name)));
+            var tasks = regions.Select(async region =>
             {
-                var oldIp = instance.Instance.PublicIpAddress;
-                try
+                var client = LightsailOperator.CreateClientWithRegion(_credentials, region.Name);
+                var instances = await LightsailOperator.GetInstance(client);
+                Logger.Info("Region [{0}] Instances: {1}", region, string.Join(",", instances.Select(i => i.DisplayName)));
+                var tasks = instances.Select(async instance =>
                 {
-                    Logger.Info("Checking {0}", instance.DisplayName);
-                    var result = await LightsailServerConnector.TestConnect(instance);
-                    if (!result)
+                    var oldIp = instance.Instance.PublicIpAddress;
+                    try
                     {
-                        await _ns.Send($"{instance.DisplayName} test domain:[{instance.ServerName} ({instance.Instance.PublicIpAddress})] for ports[{string.Join(",", instance.ServerPort)}] Down", "Lightsail Server Update");
-                        await LightsailOperator.StopInstance(client, instance.Instance);
-                        try
+                        Logger.Info("Checking {0}", instance.DisplayName);
+                        var result = await LightsailServerConnector.TestConnect(instance);
+                        if (!result)
                         {
-                            await LightsailOperator.WaitInstanceState(client, instance.Instance, LightsailOperator.InstanceState.Stopped, (int)TimeSpan.FromMinutes(5).TotalMilliseconds);
-                        }
-                        catch (TimeoutException)
-                        {
-                            throw new LightsailServerStateWaitTimeoutException($"{instance.DisplayName} wait for stop timeout[5min]");
-                        }
+                            await _ns.Send($"{instance.DisplayName} test domain:[{instance.ServerName} ({instance.Instance.PublicIpAddress})] for ports[{string.Join(",", instance.ServerPort)}] Down", "Lightsail Server Update");
+                            await LightsailOperator.StopInstance(client, instance.Instance);
+                            try
+                            {
+                                await LightsailOperator.WaitInstanceState(client, instance.Instance, LightsailOperator.InstanceState.Stopped, (int)TimeSpan.FromMinutes(5).TotalMilliseconds);
+                            }
+                            catch (TimeoutException)
+                            {
+                                throw new LightsailServerStateWaitTimeoutException($"{instance.DisplayName} wait for stop timeout[5min]");
+                            }
 
-                        await LightsailOperator.StartInstance(client, instance.Instance);
-                        try
-                        {
-                            await LightsailOperator.WaitInstanceState(client, instance.Instance, LightsailOperator.InstanceState.Running, (int)TimeSpan.FromMinutes(5).TotalMilliseconds);
-                        }
-                        catch (TimeoutException)
-                        {
-                            throw new LightsailServerStateWaitTimeoutException($"{instance.DisplayName} wait for start timeout[5min]");
-                        }
+                            await LightsailOperator.StartInstance(client, instance.Instance);
+                            try
+                            {
+                                await LightsailOperator.WaitInstanceState(client, instance.Instance, LightsailOperator.InstanceState.Running, (int)TimeSpan.FromMinutes(5).TotalMilliseconds);
+                            }
+                            catch (TimeoutException)
+                            {
+                                throw new LightsailServerStateWaitTimeoutException($"{instance.DisplayName} wait for start timeout[5min]");
+                            }
 
-                        var newIp = instance.Instance.PublicIpAddress;
-                        while (oldIp == newIp)
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(5));
-                            await LightsailOperator.FlushInstance(client, instance);
-                            newIp = instance.Instance.PublicIpAddress;
+                            var newIp = instance.Instance.PublicIpAddress;
+                            while (oldIp == newIp)
+                            {
+                                await Task.Delay(TimeSpan.FromSeconds(5));
+                                await LightsailOperator.FlushInstance(client, instance);
+                                newIp = instance.Instance.PublicIpAddress;
+                            }
+
+                            if (string.IsNullOrEmpty(newIp))
+                            {
+                                throw new LightsailServerIpGetException($"{instance.DisplayName} get new ip failed");
+                            }
+
+                            await _dnsUpdater.UpdateDns(instance.ServerName, newIp);
+
+                            await _ns.Send($"Update DNS {instance.ServerName} from {oldIp} to new ip {newIp}", "Lightsail Server Update");
                         }
-
-                        if (string.IsNullOrEmpty(newIp))
+                        else
                         {
-                            throw new LightsailServerIpGetException($"{instance.DisplayName} get new ip failed");
+                            Logger.Info("Checking {0} Success", instance.DisplayName);
                         }
-
-                        await _dnsUpdater.UpdateDns(instance.ServerName, newIp);
-
-                        await _ns.Send($"Update DNS {instance.ServerName} from {oldIp} to new ip {newIp}", "Lightsail Server Update");
                     }
-                    else
+                    catch (LightsailWatchDogException e)
                     {
-                        Logger.Info("Checking {0} Success", instance.DisplayName);
+                        await _ns.Send(e.Message, "Lightsail WatchDog Error", 10);
                     }
-                }
-                catch (LightsailWatchDogException e)
-                {
-                    await _ns.Send(e.Message, "Lightsail WatchDog Error", 10);
-                }
-                catch (Exception e)
-                {
-                    Logger.Error(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
-                    await _ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
-                }
+                    catch (Exception e)
+                    {
+                        Logger.Error(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
+                        await _ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
+                    }
+                });
+                await Task.WhenAll(tasks);
             });
-            await Task.WhenAll(tasks);
-        });
 
-        await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
+            await _ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
+        }
     }
 
     public Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater, TimeSpan period)

@@ -6,13 +6,12 @@ using Amazon.Runtime;
 using DnsUpdater;
 using Notify;
 
-public class Core
+public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater) : IDisposable
 {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-    private readonly AWSCredentials _credentials;
-    private readonly INotifyService _ns;
-    private readonly IDnsUpdater _dnsUpdater;
-    private readonly AmazonLightsailClient _defaultClient;
+    private readonly AmazonLightsailClient _defaultClient = LightsailOperator.CreateClientWithRegion(credentials, RegionEndpoint.USWest2.SystemName);
+    private PeriodicTimer? _timer;
+    private Task? _timerTask;
 
     private async Task Check()
     {
@@ -23,7 +22,7 @@ public class Core
             Logger.Info("Regions: {0}", string.Join(",", regions.Select(r => r.Name)));
             var tasks = regions.Select(async region =>
             {
-                var client = LightsailOperator.CreateClientWithRegion(_credentials, region.Name);
+                var client = LightsailOperator.CreateClientWithRegion(credentials, region.Name);
                 var instances = await LightsailOperator.GetInstance(client);
                 Logger.Info("Region [{0}] Instances: {1}", region, string.Join(",", instances.Select(i => i.DisplayName)));
                 var tasks = instances.Select(async instance =>
@@ -35,7 +34,7 @@ public class Core
                         var result = await LightsailServerConnector.TestConnect(instance);
                         if (!result)
                         {
-                            await _ns.Send($"{instance.DisplayName} test domain:[{instance.ServerName} ({instance.Instance.PublicIpAddress})] for ports[{string.Join(",", instance.ServerPort)}] Down", "Lightsail Server Update");
+                            await ns.Send($"{instance.DisplayName} test domain:[{instance.ServerName} ({instance.Instance.PublicIpAddress})] for ports[{string.Join(",", instance.ServerPort)}] Down", "Lightsail Server Update");
                             await LightsailOperator.StopInstance(client, instance.Instance);
                             try
                             {
@@ -69,9 +68,9 @@ public class Core
                                 throw new LightsailServerIpGetException($"{instance.DisplayName} get new ip failed");
                             }
 
-                            await _dnsUpdater.UpdateDns(instance.ServerName, newIp);
+                            await dnsUpdater.UpdateDns(instance.ServerName, newIp);
 
-                            await _ns.Send($"Update DNS {instance.ServerName} from {oldIp} to new ip {newIp}", "Lightsail Server Update");
+                            await ns.Send($"Update DNS {instance.ServerName} from {oldIp} to new ip {newIp}", "Lightsail Server Update");
                         }
                         else
                         {
@@ -80,12 +79,12 @@ public class Core
                     }
                     catch (LightsailWatchDogException e)
                     {
-                        await _ns.Send(e.Message, "Lightsail WatchDog Error", 10);
+                        await ns.Send(e.Message, "Lightsail WatchDog Error", 10);
                     }
                     catch (Exception e)
                     {
                         Logger.Error(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
-                        await _ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
+                        await ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
                     }
                 });
                 await Task.WhenAll(tasks);
@@ -96,16 +95,46 @@ public class Core
         catch (Exception e)
         {
             Logger.Error(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
-            await _ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
+            await ns.Send(e.Message, "Lightsail WatchDog Error", 10, false);
         }
     }
 
-    public Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater, TimeSpan period)
+    public void Start(TimeSpan period)
     {
-        _credentials = credentials;
-        _ns = ns;
-        _dnsUpdater = dnsUpdater;
-        _defaultClient = LightsailOperator.CreateClientWithRegion(credentials, RegionEndpoint.USWest2.SystemName);
-        _ = new Timer(_ => Task.Run(Check), null, TimeSpan.Zero, period);
+        _timer?.Dispose();
+        _timer = new PeriodicTimer(period);
+        _timerTask = Task.Run(async () =>
+        {
+            Logger.Info("Lightsail WatchDog Start Checking every {0}", period);
+            while (await _timer.WaitForNextTickAsync())
+            {
+                try
+                {
+                    await Check();
+                }
+                catch (Exception e)
+                {
+                    Logger.Fatal(e, "Lightsail WatchDog Error on Checking: {0}", e.Message);
+                    await ns.Send(e.Message, "Lightsail WatchDog Fatal Error", 10, false);
+                }
+            }
+
+            Logger.Info("Lightsail WatchDog Stop Checking");
+        });
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+        if (_timer == null) return;
+        _timerTask?.Dispose();
+        _timer.Dispose();
+        _timer = null;
     }
 }

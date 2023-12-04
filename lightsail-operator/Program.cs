@@ -41,7 +41,9 @@ else
     dnsUpdater = new EmptyDnsUpdater();
 }
 
-_ = new Core(credentials, ns, dnsUpdater, TimeSpan.FromMinutes(checkPeriod));
+var core = new Core(credentials, ns, dnsUpdater);
+
+core.Start(TimeSpan.FromMinutes(checkPeriod));
 
 var quitEvent = new ManualResetEvent(false);
 

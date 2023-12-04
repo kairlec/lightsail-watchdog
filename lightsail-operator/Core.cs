@@ -99,10 +99,23 @@ public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dns
         }
     }
 
+    private class TimeProviderDelegate(TimeProvider delegateTimer) : TimeProvider
+    {
+        public TimeProviderDelegate() : this(System)
+        {
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            return delegateTimer.CreateTimer(callback, state, TimeSpan.Zero, period);
+        }
+    }
+
     public void Start(TimeSpan period)
     {
         _timer?.Dispose();
-        _timer = new PeriodicTimer(period);
+        _timer = new PeriodicTimer(period, new TimeProviderDelegate());
+
         _timerTask = Task.Run(async () =>
         {
             Logger.Info("Lightsail WatchDog Start Checking every {0}", period);

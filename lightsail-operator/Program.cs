@@ -1,7 +1,11 @@
-﻿using Amazon.Runtime;
+﻿using System.Net;
+using Amazon.Runtime;
 using lightsail_watchdog;
 using lightsail_watchdog.DnsUpdater;
 using lightsail_watchdog.Notify;
+
+// disable server cert validate
+ServicePointManager.ServerCertificateValidationCallback += (_, _, _, _) => true;
 
 LoggerInitializer.Initialize();
 

@@ -17,6 +17,11 @@ var cloudFlareEmail = EnvironmentHelper.GetString("CLOUDFLARE_EMAIL");
 var cloudFlareToken = EnvironmentHelper.GetString("CLOUDFLARE_TOKEN");
 var cloudFlareZoneId = EnvironmentHelper.GetString("CLOUDFLARE_ZONE_ID");
 var checkPeriod = EnvironmentHelper.GetInt("CHECK_PERIOD_MINUTES") ?? 60;
+var useRegionsStr = EnvironmentHelper.GetString("USE_REGIONS");
+
+var useRegions = string.IsNullOrWhiteSpace(useRegionsStr)
+    ? null
+    : useRegionsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 var credentials = new BasicAWSCredentials(awsAccessKeyId, awsAccessSecretKeyId);
 
@@ -45,7 +50,7 @@ else
     dnsUpdater = new EmptyDnsUpdater();
 }
 
-var core = new Core(credentials, ns, dnsUpdater);
+var core = new Core(credentials, ns, dnsUpdater, useRegions);
 
 core.Start(TimeSpan.FromMinutes(checkPeriod));
 

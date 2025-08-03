@@ -6,7 +6,7 @@ using Amazon.Runtime;
 using DnsUpdater;
 using Notify;
 
-public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater) : IDisposable
+public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dnsUpdater, string[]? useRegions) : IDisposable
 {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
     private readonly AmazonLightsailClient _defaultClient = LightsailOperator.CreateClientWithRegion(credentials, RegionEndpoint.USWest2.SystemName);
@@ -18,12 +18,37 @@ public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dns
         try
         {
             Logger.Info("Check Start");
-            var regions = await LightsailOperator.GetRegions(_defaultClient);
-            Logger.Info("Regions: {0}", string.Join(",", regions.Select(r => r.Name)));
+            List<RegionName> regions;
+            if (useRegions != null)
+            {
+                regions = useRegions.Select(r => new RegionName(r)).ToList();
+            }
+            else
+            {
+                regions = (await LightsailOperator.GetRegions(_defaultClient))
+                    .Select(r => r.Name).ToList();
+            }
+
+            Logger.Info("Regions: {0}", string.Join(",", regions));
             var tasks = regions.Select(async region =>
             {
-                var client = LightsailOperator.CreateClientWithRegion(credentials, region.Name);
-                var instances = await LightsailOperator.GetInstance(client);
+                var client = LightsailOperator.CreateClientWithRegion(credentials, region);
+                List<WrappedInstance> instances;
+                try
+                {
+                    instances = await LightsailOperator.GetInstance(client);
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn(e, "Lightsail WatchDog Error on GetInstance for region [{0}]: {1}", region, e.Message);
+                    return;
+                }
+
+                if (instances.Count == 0)
+                {
+                    return;
+                }
+
                 Logger.Info("Region [{0}] Instances: {1}", region, string.Join(",", instances.Select(i => i.DisplayName)));
                 var tasks = instances.Select(async instance =>
                 {
@@ -91,6 +116,7 @@ public class Core(AWSCredentials credentials, INotifyService ns, IDnsUpdater dns
             });
 
             await Task.WhenAll(tasks);
+            Logger.Info("Check Completed");
         }
         catch (Exception e)
         {
